@@ -21,31 +21,25 @@ def test_divide_route_error():
     assert response.json() == {"detail": "Cannot divide by zero"}
 
 @patch("httpx.AsyncClient.get", new_callable=AsyncMock)
-def test_get_cicd_status_success(mock_get):
-    # 1. Create a fake response object using MagicMock (synchronous)
+def test_get_cicd_status_github_error(mock_get):
+    # 1. Create a fake response object for an error (e.g., GitHub is down)
     mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {
-        "workflow_runs": [{
-            "name": "CI Pipeline",
-            "status": "completed",
-            "conclusion": "success",
-            "head_branch": "main",
-            "head_commit": {"message": "Testing Mocking"},
-            "html_url": "https://github.com/..."
-        }]
-    }
+    mock_response.status_code = 403
+    mock_response.text = '{"message": "Forbidden", "documentation_url": "https://docs.github.com/rest/actions/workflows"}'
     
-    # Tell the async network call to return our synchronous fake response
+    # Tell the async network call to return this error response
     mock_get.return_value = mock_response
     
     # 2. Call our API
     response = client.get("/api/cicd-status")
     
-    # 3. Assert it behaves correctly
-    assert response.status_code == 200
-    assert response.json()["pipeline_name"] == "CI Pipeline"
-    assert response.json()["conclusion"] == "success"
+    # 3. Assert that our error handling works!
+    assert response.status_code == 403 # Our FastAPI now returns 403 directly, not 500
+    
+    # UPDATE THIS LINE: Assert against the more specific error message
+    assert response.json()["detail"] == f"GitHub API Error: {mock_response.status_code} - {mock_response.text}"
+    # OR, if you want it to catch the general HTTPException 
+    # assert "GitHub API Error: 403" in response.json()["detail"]
 
 
 @patch("httpx.AsyncClient.get", new_callable=AsyncMock)
