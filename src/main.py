@@ -1,9 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
+# from fastapi.staticfiles import StaticFiles #commented for ruff failing the build since unused
 import httpx
 from src.calculator import add, divide
-import os
+# import os #commented for ruff failing the build since unused
 
 app = FastAPI(title="CI/CD Math API")
 
