@@ -1,0 +1,33 @@
+name: CD Pipeline (Docker Publish)
+
+# Only run when code is merged/pushed to main
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  push_to_registry:
+    # Only run this if the CI pipeline passed!
+    needs: [] # In a combined file, you'd put the CI job name here. As a separate workflow, it runs in parallel, but we usually combine them or trigger on workflow_run. 
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+      
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository }}/math-api:latest

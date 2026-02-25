@@ -1,0 +1,16 @@
+my-python-ci-cd/
+├── .github/
+│   └── workflows/
+│       ├── ci.yml       # Continuous Integration (Tests & Linting)
+│       └── cd.yml       # Continuous Deployment (Docker build)
+├── src/
+│   ├── __init__.py
+│   ├── calculator.py    # Business logic
+│   └── main.py          # API Endpoints
+├── tests/
+│   ├── __init__.py
+│   ├── test_calculator.py
+│   └── test_main.py
+├── .gitignore
+├── Dockerfile
+└── requirements.txt

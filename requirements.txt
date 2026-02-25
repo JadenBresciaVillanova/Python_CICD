@@ -1,0 +1,15 @@
+#WEB FRAMEWORK & SERVER
+fastapi==0.110.0 # The modern, fast web framework we use to build the API endpoints.
+uvicorn==0.27.1  # The web server engine that actually runs the FastAPI application.
+
+#TESTING
+pytest==8.0.2    # The industry-standard testing framework used to run our unit and integration tests.
+pytest-cov==4.1.0 # A plugin for pytest that calculates Code Coverage (what % of code is tested).
+httpx==0.27.0    # An HTTP client. FastAPI's TestClient uses this under the hood to simulate API requests during tests.
+
+#CODE QUALITY & LINTING
+ruff==0.3.2      # An extremely fast, modern linter and formatter. Enforces coding style and checks code complexity.
+mypy==1.9.0      # A static type checker. It reads Python type hints to ensure we don't pass wrong data types (e.g., passing a string into a float).
+
+#SECURITY
+bandit==1.7.8    # A security scanner (SAST). Analyzes our code for known security vulnerabilities like hardcoded passwords or insecure configurations.
