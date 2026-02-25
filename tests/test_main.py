@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 from src.main import app
+from unittest.mock import patch, AsyncMock
 
 client = TestClient(app)
 
@@ -18,3 +19,39 @@ def test_divide_route_error():
     response = client.get("/divide?a=10&b=0")
     assert response.status_code == 400
     assert response.json() == {"detail": "Cannot divide by zero"}
+
+@patch("httpx.AsyncClient.get", new_callable=AsyncMock)
+def test_get_cicd_status_success(mock_get):
+    # 1. Setup our "fake" GitHub API response
+    mock_get.return_value.status_code = 200
+    mock_get.return_value.json.return_value = {
+        "workflow_runs": [{
+            "name": "CI Pipeline",
+            "status": "completed",
+            "conclusion": "success",
+            "head_branch": "main",
+            "head_commit": {"message": "Testing Mocking"},
+            "html_url": "https://github.com/..."
+        }]
+    }
+    
+    # 2. Call our API 
+    # (It will hit the mock instead of the real internet!)
+    response = client.get("/api/cicd-status")
+    
+    # 3. Assert it behaves correctly
+    assert response.status_code == 200
+    assert response.json()["pipeline_name"] == "CI Pipeline"
+    assert response.json()["conclusion"] == "success"
+
+@patch("httpx.AsyncClient.get", new_callable=AsyncMock)
+def test_get_cicd_status_github_error(mock_get):
+    # 1. Simulate GitHub being down or rate-limiting us (HTTP 403/500)
+    mock_get.return_value.status_code = 403
+    
+    # 2. Call our API
+    response = client.get("/api/cicd-status")
+    
+    # 3. Assert that our error handling works!
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Could not fetch GitHub data"
