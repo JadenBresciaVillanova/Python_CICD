@@ -7,8 +7,6 @@ on:
 
 jobs:
   push_to_registry:
-    # Only run this if the CI pipeline passed!
-    needs: [] # In a combined file, you'd put the CI job name here. As a separate workflow, it runs in parallel, but we usually combine them or trigger on workflow_run. 
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -24,10 +22,17 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
+          
+      # --- ADD THIS NEW STEP ---
+      - name: Convert repository name to lowercase
+        run: |
+          echo "REPO=${GITHUB_REPOSITORY,,}" >>${GITHUB_ENV}
+      # -------------------------
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository }}/math-api:latest
+          # --- UPDATE THIS LINE TO USE env.REPO ---
+          tags: ghcr.io/${{ env.REPO }}/math-api:latest
