@@ -6,7 +6,8 @@ client = TestClient(app)
 def test_read_root():
     response = client.get("/")
     assert response.status_code == 200
-    assert response.json() == {"message": "Welcome to the CI/CD API"}
+    # Instead of checking for JSON, we just check if our HTML title is in the response
+    assert "CI/CD Platform Dashboard" in response.text
 
 def test_add_route():
     response = client.get("/add?a=5&b=5")
