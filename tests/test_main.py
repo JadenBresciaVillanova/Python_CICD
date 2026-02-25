@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 from src.main import app
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, MagicMock
 
 client = TestClient(app)
 
@@ -22,9 +22,10 @@ def test_divide_route_error():
 
 @patch("httpx.AsyncClient.get", new_callable=AsyncMock)
 def test_get_cicd_status_success(mock_get):
-    # 1. Setup our "fake" GitHub API response
-    mock_get.return_value.status_code = 200
-    mock_get.return_value.json.return_value = {
+    # 1. Create a fake response object using MagicMock (synchronous)
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
         "workflow_runs": [{
             "name": "CI Pipeline",
             "status": "completed",
@@ -35,8 +36,10 @@ def test_get_cicd_status_success(mock_get):
         }]
     }
     
-    # 2. Call our API 
-    # (It will hit the mock instead of the real internet!)
+    # Tell the async network call to return our synchronous fake response
+    mock_get.return_value = mock_response
+    
+    # 2. Call our API
     response = client.get("/api/cicd-status")
     
     # 3. Assert it behaves correctly
@@ -44,10 +47,15 @@ def test_get_cicd_status_success(mock_get):
     assert response.json()["pipeline_name"] == "CI Pipeline"
     assert response.json()["conclusion"] == "success"
 
+
 @patch("httpx.AsyncClient.get", new_callable=AsyncMock)
 def test_get_cicd_status_github_error(mock_get):
-    # 1. Simulate GitHub being down or rate-limiting us (HTTP 403/500)
-    mock_get.return_value.status_code = 403
+    # 1. Create a fake response object for an error (e.g., GitHub is down)
+    mock_response = MagicMock()
+    mock_response.status_code = 403
+    
+    # Tell the async network call to return this error response
+    mock_get.return_value = mock_response
     
     # 2. Call our API
     response = client.get("/api/cicd-status")
