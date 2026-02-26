@@ -40,20 +40,3 @@ def test_get_cicd_status_github_error(mock_get):
     assert response.json()["detail"] == f"GitHub API Error: {mock_response.status_code} - {mock_response.text}"
     # OR, if you want it to catch the general HTTPException 
     # assert "GitHub API Error: 403" in response.json()["detail"]
-
-
-@patch("httpx.AsyncClient.get", new_callable=AsyncMock)
-def test_get_cicd_status_github_error(mock_get):
-    # 1. Create a fake response object for an error (e.g., GitHub is down)
-    mock_response = MagicMock()
-    mock_response.status_code = 403
-    
-    # Tell the async network call to return this error response
-    mock_get.return_value = mock_response
-    
-    # 2. Call our API
-    response = client.get("/api/cicd-status")
-    
-    # 3. Assert that our error handling works!
-    assert response.status_code == 500
-    assert response.json()["detail"] == "Could not fetch GitHub data"
