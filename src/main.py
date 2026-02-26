@@ -31,15 +31,9 @@ async def get_cicd_status():
         async with httpx.AsyncClient() as client:
             response = await client.get(url, headers=headers)
 
-            # If GitHub API returns an error status (>= 400), we re-raise it as an HTTPException
-            # with the original status code. This means if GitHub sends 403, our API sends 403.
             if response.status_code >= 400:
-                # IMPORTANT: FastAPI's internal routing will catch this HTTPException and
-                # automatically turn it into an HTTP response with the specified status code (e.g., 403).
-                # It will NOT be caught by the general `except Exception` below.
                 raise HTTPException(status_code=response.status_code, detail=f"GitHub API Error: {response.status_code} - {response.text}")
                     
-            # If we reach here, response.status_code is < 400 (ideally 200 OK)
             data = response.json()
             
             workflow_runs = data.get("workflow_runs")
@@ -56,12 +50,14 @@ async def get_cicd_status():
                 "commit_message": latest_run["head_commit"]["message"],
                 "url": latest_run["html_url"]
             }
-    # Catch httpx specific errors (e.g., network connection failure, DNS issues)
+            
+    # --- NEW FIX: Let HTTPExceptions pass through untouched ---
+    except HTTPException:
+        raise
+    # ----------------------------------------------------------
+    
     except httpx.RequestError as exc:
         raise HTTPException(status_code=500, detail=f"An error occurred while requesting GitHub API: {exc}")
-    # Catch any other truly unexpected errors that were NOT httpx.RequestError or HTTPException.
-    # This ensures that if processing the data (e.g., data.get('workflow_runs')) fails unexpectedly,
-    # it still results in a 500, but doesn't interfere with specific HTTP status codes.
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred during processing: {exc}")
 
