@@ -2,16 +2,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 import httpx
 from src.calculator import add, divide
-import os # We now need this 'os' import again to read env vars!
+import os 
 
 app = FastAPI(title="CI/CD Math API")
 
-# Update this to your exact GitHub Username and Repo name!
-# Make sure this is IDENTICAL to your GitHub repo name (case-sensitive for API paths)
 GITHUB_REPO = "JadenBresciaVillanova/Python_CICD" 
 
-# Get the GitHub token from environment variable
-# It's good practice to make this configurable
 GITHUB_API_TOKEN = os.getenv("GITHUB_TOKEN")
 
 if not GITHUB_API_TOKEN:
@@ -31,45 +27,43 @@ async def get_cicd_status():
     if GITHUB_API_TOKEN:
         headers["Authorization"] = f"token {GITHUB_API_TOKEN}"
     
-    async with httpx.AsyncClient() as client:
-        try:
-            print(f"DEBUG: Requesting URL: {url} with headers: {headers}") # Debugging line
+    try:
+        async with httpx.AsyncClient() as client:
             response = await client.get(url, headers=headers)
-            print(f"DEBUG: GitHub API response status: {response.status_code}") # Debugging line
-            print(f"DEBUG: GitHub API response body: {response.text[:500]}...") # Debugging line (limit body length)
 
-            # GitHub returns 404 for non-existent repos or sometimes for unauthorized private ones
-            if response.status_code == 404:
-                raise HTTPException(status_code=404, detail="GitHub repository or workflow runs not found. Check GITHUB_REPO or token permissions.")
-            
-            # Catch other client errors (403 Forbidden, 429 Rate Limited, etc.)
+            # If GitHub API returns an error status (>= 400), we re-raise it as an HTTPException
+            # with the original status code. This means if GitHub sends 403, our API sends 403.
             if response.status_code >= 400:
+                # IMPORTANT: FastAPI's internal routing will catch this HTTPException and
+                # automatically turn it into an HTTP response with the specified status code (e.g., 403).
+                # It will NOT be caught by the general `except Exception` below.
                 raise HTTPException(status_code=response.status_code, detail=f"GitHub API Error: {response.status_code} - {response.text}")
-                
+                    
+            # If we reach here, response.status_code is < 400 (ideally 200 OK)
             data = response.json()
             
-            # Robustly check if workflow_runs exists and is not empty
             workflow_runs = data.get("workflow_runs")
             if not workflow_runs:
-                # If there are no runs, return a message instead of failing
                 return {"message": "No CI/CD runs found yet for this repository."}
 
-            # Get the most recent pipeline run
-            latest_run = workflow_runs[0] # Safely access now that we know it's not empty
+            latest_run = workflow_runs[0]
             
             return {
                 "pipeline_name": latest_run["name"],
-                "status": latest_run["status"],           # e.g., "completed", "in_progress"
-                "conclusion": latest_run["conclusion"],   # e.g., "success", "failure"
+                "status": latest_run["status"],
+                "conclusion": latest_run["conclusion"],
                 "branch": latest_run["head_branch"],
                 "commit_message": latest_run["head_commit"]["message"],
                 "url": latest_run["html_url"]
             }
-        except httpx.RequestError as exc:
-            raise HTTPException(status_code=500, detail=f"An error occurred while requesting GitHub API: {exc}")
-        except Exception as exc:
-            # Catch any other unexpected errors during processing
-            raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {exc}")
+    # Catch httpx specific errors (e.g., network connection failure, DNS issues)
+    except httpx.RequestError as exc:
+        raise HTTPException(status_code=500, detail=f"An error occurred while requesting GitHub API: {exc}")
+    # Catch any other truly unexpected errors that were NOT httpx.RequestError or HTTPException.
+    # This ensures that if processing the data (e.g., data.get('workflow_runs')) fails unexpectedly,
+    # it still results in a 500, but doesn't interfere with specific HTTP status codes.
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred during processing: {exc}")
 
 
 # --- Keep your existing calculator routes below ---
